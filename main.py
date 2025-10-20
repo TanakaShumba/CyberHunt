@@ -6,7 +6,7 @@ from jinja2 import Template
 
 console = Console()
 VT_API = "https://www.virustotal.com/api/v3/ip_addresses/"
-HEADERS = {"x-apikey": "YOUR_API_KEY_HERE"}  # Replace with your VirusTotal key
+HEADERS = {"x-apikey": "YOUR_API_KEY_HERE"}  # replace with your VirusTotal key
 
 def vt_check(ip):
     try:
@@ -22,48 +22,37 @@ def vt_check(ip):
 def html_report(results):
     os.makedirs("reports", exist_ok=True)
     template = Template("""
-    <html><head><title>CyberHunt Report</title></head>
-    <body style="background:black;color:#39ff14;font-family:monospace;">
-    <h1>🕵️‍♂️ CyberHunt Threat Intelligence Report</h1>
-    <table border="1" cellspacing="0" cellpadding="5">
+    <html><body style='background:black;color:#39ff14;font-family:monospace;'>
+    <h1>🕵️ CyberHunt Threat Intelligence Report</h1>
+    <table border='1' cellpadding='5'>
     <tr><th>IP</th><th>Malicious</th><th>Last Analysis</th></tr>
     {% for r in results %}
       <tr><td>{{r.ip}}</td><td>{{r.malicious}}</td><td>{{r.last_analysis}}</td></tr>
     {% endfor %}
-    </table>
-    <p>Generated: {{date}}</p>
-    </body></html>
+    </table><p>Generated: {{date}}</p></body></html>
     """)
     with open("reports/cyberhunt_report.html","w") as f:
         f.write(template.render(results=results, date=datetime.datetime.now()))
     console.print("[green]✅ Report saved: reports/cyberhunt_report.html[/green]")
 
 def main():
-    parser = argparse.ArgumentParser(description="CyberHunt Threat Intelligence CLI")
-    parser.add_argument("-i", "--indicator", help="Single IP address or domain to check")
-    parser.add_argument("-f", "--file", help="File containing list of IPs/domains")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-i", "--indicator")
+    parser.add_argument("-f", "--file")
     args = parser.parse_args()
 
-    indicators = []
-    if args.indicator:
-        indicators.append(args.indicator)
-    elif args.file:
-        with open(args.file) as f:
-            indicators = [line.strip() for line in f.readlines() if line.strip()]
-    else:
-        console.print("[red]Provide an indicator or file (-i or -f).[/red]")
+    if not args.indicator and not args.file:
+        console.print("[red]Provide -i or -f[/red]")
         return
 
+    indicators = [args.indicator] if args.indicator else [line.strip() for line in open(args.file)]
     results = [vt_check(i) for i in indicators]
 
-    # Display in console
     table = Table(title="CyberHunt Threat Report", style="green")
-    table.add_column("IP/Domain"), table.add_column("Malicious"), table.add_column("Last Analysis")
+    table.add_column("IP/Domain"); table.add_column("Malicious"); table.add_column("Last Analysis")
     for r in results:
         table.add_row(r["ip"], str(r["malicious"]), str(r["last_analysis"]))
     console.print(table)
-
-    # Save HTML report
     html_report(results)
 
 if __name__ == "__main__":
